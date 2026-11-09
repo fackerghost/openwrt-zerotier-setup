@@ -342,7 +342,15 @@ ERROR: failed to install zerotier
 ```
 
 При этом сам `zerotier` уже стоит, но без `libminiupnpc` не запустится.
-Скрипт проверяет `ldd` и сам пытается выполнить `apk fix`. Вручную:
+Симптом — ошибка при генерации identity:
+
+```
+Error loading shared library libminiupnpc.so.18: No such file or directory
+(needed by /usr/bin/zerotier-idtool)
+```
+
+Скрипт проверяет библиотеки через `ldd` и сам пытается выполнить `apk fix`.
+Вручную:
 
 ```sh
 apk cache clean 2>/dev/null
@@ -350,6 +358,15 @@ apk update
 apk add libminiupnpc
 # или сразу починить все зависимости:
 apk fix
+```
+
+Если `apk` снова не может скачать пакет, скачайте его через `uclient-fetch`
+и поставьте локально (путь для 25.12.4 / aarch64_cortex-a53):
+
+```sh
+uclient-fetch -O /tmp/libminiupnpc.apk \
+  https://downloads.openwrt.org/releases/25.12.4/packages/aarch64_cortex-a53/packages/libminiupnpc-2.2.8-r1.apk
+apk add /tmp/libminiupnpc.apk
 ```
 
 Проверка:

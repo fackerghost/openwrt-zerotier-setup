@@ -125,8 +125,17 @@ install_package() {
 # dependency missing. Detect that and try to repair it before starting.
 missing_libs() {
 	[ -x /usr/bin/zerotier-one ] || return 0
-	command -v ldd >/dev/null 2>&1 || return 0
-	ldd /usr/bin/zerotier-one 2>/dev/null | awk '/not found/ {print $1}'
+
+	if command -v ldd >/dev/null 2>&1; then
+		# glibc prints "=> not found", musl prints loader errors to stderr.
+		ldd /usr/bin/zerotier-one 2>&1 |
+			grep -E 'not found|Error loading shared library|Error relocating' || true
+		return 0
+	fi
+
+	# ldd is not guaranteed to be installed on OpenWrt.
+	/usr/bin/zerotier-one -v 2>&1 |
+		grep -E 'Error loading shared library|Error relocating' || true
 }
 
 repair_package() {
