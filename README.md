@@ -7,6 +7,8 @@ creates the firewall zone needed for ZeroTier traffic.
 The script defaults to network **`8d1c312afa6d0fe8`**; any other network ID can
 be passed with `--network`.
 
+🇷🇺 Пошаговая инструкция на русском: **[README.ru.md](README.ru.md)**
+
 ## Features
 
 - Installs `zerotier` via `opkg` or `apk` (whichever the firmware uses)
@@ -130,23 +132,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Русский
 
-Скрипт устанавливает ZeroTier на OpenWrt, подключает к сети
-`8d1c312afa6d0fe8`, включает автозапуск и настраивает firewall.
-
-```sh
-wget -O /tmp/zerotier-setup.sh https://raw.githubusercontent.com/fackerghost/openwrt-zerotier-setup/main/zerotier-setup.sh
-sh /tmp/zerotier-setup.sh          # доступ к роутеру
-sh /tmp/zerotier-setup.sh --lan    # доступ к роутеру и локальной сети
-```
-
-После запуска авторизуйте node ID в
-[ZeroTier Central](https://my.zerotier.com/network/8d1c312afa6d0fe8) —
-без этого узел не получит адрес. Проверка:
-
-```sh
-zerotier-cli info
-zerotier-cli listnetworks
-```
-
-Полезные флаги: `--network <id>` — другая сеть, `--no-firewall` — не трогать
-firewall, `--no-install` — только настроить. Скрипт можно запускать повторно.
+Подробная инструкция: **[README.ru.md](README.ru.md)** — скачивание,
+установка, авторизация узла, проверка, удаление и разбор ошибки
+`Failed to send request: Operation not permitted`.
