@@ -1,16 +1,16 @@
 #!/bin/sh
 #
-# zerotier-setup.sh - install and configure ZeroTier on OpenWrt
+# zerotier-setup.sh — установка и настройка ZeroTier на OpenWrt
 #
-# License: MIT
-# Repository: https://github.com/fackerghost/openwrt-zerotier-setup
+# Лицензия: MIT
+# Репозиторий: https://github.com/fackerghost/openwrt-zerotier-setup
 #
-# Options:
-#   -n, --network ID   ZeroTier network ID (default: 8d1c312afa6d0fe8)
-#       --lan          allow forwarding between ZeroTier and LAN
-#       --no-firewall  do not touch the firewall configuration
-#       --no-install   do not install the zerotier package
-#   -h, --help         show this help
+# Параметры:
+#   -n, --network ID   ID сети ZeroTier (по умолчанию: 8d1c312afa6d0fe8)
+#       --lan          разрешить forwarding между ZeroTier и LAN
+#       --no-firewall  не изменять настройки firewall
+#       --no-install   не устанавливать пакет zerotier
+#   -h, --help         показать справку
 
 NETWORK_ID="${ZEROTIER_NETWORK_ID:-8d1c312afa6d0fe8}"
 LAN_ACCESS=0
@@ -22,23 +22,23 @@ STATUS=""
 NETLINE=""
 
 log()  { printf '%s\n' "$*"; }
-warn() { printf 'WARNING: %s\n' "$*" >&2; }
-die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+warn() { printf 'ПРЕДУПРЕЖДЕНИЕ: %s\n' "$*" >&2; }
+die()  { printf 'ОШИБКА: %s\n' "$*" >&2; exit 1; }
 
 usage() {
 	cat <<'EOF'
-Install and configure ZeroTier on OpenWrt.
+Установка и настройка ZeroTier на OpenWrt.
 
-Usage: sh zerotier-setup.sh [options]
+Использование: sh zerotier-setup.sh [параметры]
 
-Options:
-  -n, --network ID   ZeroTier network ID (default: 8d1c312afa6d0fe8)
-      --lan          allow forwarding between ZeroTier and LAN
-      --no-firewall  do not touch the firewall configuration
-      --no-install   do not install the zerotier package
-  -h, --help         show this help
+Параметры:
+  -n, --network ID   ID сети ZeroTier (по умолчанию: 8d1c312afa6d0fe8)
+      --lan          разрешить forwarding между ZeroTier и LAN
+      --no-firewall  не изменять настройки firewall
+      --no-install   не устанавливать пакет zerotier
+  -h, --help         показать эту справку
 
-The network ID can also be set with ZEROTIER_NETWORK_ID.
+ID сети также можно задать переменной ZEROTIER_NETWORK_ID.
 EOF
 }
 
@@ -46,7 +46,7 @@ parse_args() {
 	while [ $# -gt 0 ]; do
 		case "$1" in
 			-n|--network)
-				[ $# -ge 2 ] || die "option $1 requires a network ID"
+				[ $# -ge 2 ] || die "параметр $1 требует ID сети"
 				NETWORK_ID=$2
 				shift 2
 				;;
@@ -71,20 +71,20 @@ parse_args() {
 				exit 0
 				;;
 			*)
-				die "unknown option: $1 (use --help)"
+				die "неизвестный параметр: $1 (используйте --help)"
 				;;
 		esac
 	done
 
-	# Normalize to the 16-character lowercase hex format used by ZeroTier.
+	# Приводим ID к 16-символьному нижнему регистру, как требует ZeroTier.
 	NETWORK_ID=$(printf '%s' "$NETWORK_ID" | tr 'A-F' 'a-f')
 	case "$NETWORK_ID" in
-		*[!0-9a-f]*) die "invalid network ID: $NETWORK_ID" ;;
+		*[!0-9a-f]*) die "неверный ID сети: $NETWORK_ID" ;;
 	esac
-	[ ${#NETWORK_ID} -eq 16 ] || die "network ID must be 16 hex characters: $NETWORK_ID"
+	[ ${#NETWORK_ID} -eq 16 ] || die "ID сети должен состоять из 16 hex-символов: $NETWORK_ID"
 }
 
-# List section names of a given type from a UCI config.
+# Список имён секций заданного типа из конфига UCI.
 section_list() {
 	uci show "$1" 2>/dev/null | sed -n "s/^$1\.\([^.=]*\)=$2$/\1/p"
 }
@@ -103,37 +103,37 @@ pkg_installed() {
 
 install_package() {
 	if pkg_installed; then
-		log "ZeroTier package is already installed."
+		log "Пакет ZeroTier уже установлен."
 		return 0
 	fi
 
-	log "Installing the zerotier package..."
+	log "Установка пакета zerotier..."
 	if command -v apk >/dev/null 2>&1; then
-		apk update || warn "apk update reported errors, trying install anyway"
-		apk add zerotier || warn "apk reported errors; checking the installation..."
+		apk update || warn "apk update сообщил об ошибках, всё равно пробуем установить"
+		apk add zerotier || warn "apk сообщил об ошибках; проверяем установку..."
 	else
-		opkg update || warn "opkg update reported errors, trying install anyway"
-		opkg install zerotier || warn "opkg reported errors; checking the installation..."
+		opkg update || warn "opkg update сообщил об ошибках, всё равно пробуем установить"
+		opkg install zerotier || warn "opkg сообщил об ошибках; проверяем установку..."
 	fi
 
 	if ! pkg_installed; then
-		die "failed to install zerotier (check feeds, DNS and free space)"
+		die "не удалось установить zerotier (проверьте feeds, DNS и свободное место)"
 	fi
 }
 
-# A partial apk transaction can leave the main package installed but a
-# dependency missing. Detect that and try to repair it before starting.
+# Частичная транзакция apk может оставить основной пакет установленным,
+# но без зависимости. Проверяем это и пытаемся починить до запуска.
 missing_libs() {
 	[ -x /usr/bin/zerotier-one ] || return 0
 
 	if command -v ldd >/dev/null 2>&1; then
-		# glibc prints "=> not found", musl prints loader errors to stderr.
+		# glibc печатает "=> not found", musl пишет ошибки загрузчика в stderr.
 		ldd /usr/bin/zerotier-one 2>&1 |
 			grep -E 'not found|Error loading shared library|Error relocating' || true
 		return 0
 	fi
 
-	# ldd is not guaranteed to be installed on OpenWrt.
+	# ldd не всегда установлен в OpenWrt.
 	/usr/bin/zerotier-one -v 2>&1 |
 		grep -E 'Error loading shared library|Error relocating' || true
 }
@@ -144,8 +144,8 @@ repair_package() {
 	missing=$(missing_libs)
 	[ -n "$missing" ] || return 0
 
-	warn "ZeroTier has missing libraries: $missing"
-	warn "Trying to repair the package installation..."
+	warn "У ZeroTier не хватает библиотек: $missing"
+	warn "Пробуем починить установку пакета..."
 	if command -v apk >/dev/null 2>&1; then
 		apk fix >/dev/null 2>&1 || apk add zerotier >/dev/null 2>&1 || true
 	else
@@ -154,12 +154,12 @@ repair_package() {
 
 	missing=$(missing_libs)
 	if [ -n "$missing" ]; then
-		die "ZeroTier still has missing libraries: $missing. Run 'apk fix' (or reinstall zerotier) and retry."
+		die "У ZeroTier по-прежнему не хватает библиотек: $missing. Выполните 'apk fix' (или переустановите zerotier) и повторите."
 	fi
-	log "ZeroTier package dependencies are complete."
+	log "Зависимости пакета ZeroTier в порядке."
 }
 
-# OpenWrt 23.05+ uses one UCI network section per ZeroTier network.
+# OpenWrt 23.05+ использует отдельную секцию UCI для каждой сети ZeroTier.
 uses_network_sections() {
 	grep -q 'config_foreach join_network network' /etc/init.d/zerotier 2>/dev/null && return 0
 	[ -n "$(section_list zerotier network)" ]
@@ -173,7 +173,7 @@ configure_new_schema() {
 	fi
 	uci_quiet set zerotier.global.enabled=1
 
-	# Drop the sample "Earth" network shipped with the package.
+	# Удаляем тестовую сеть Earth, которая идёт в комплекте с пакетом.
 	for sec in $(section_list zerotier network); do
 		id=$(uci get "zerotier.$sec.id" 2>/dev/null || true)
 		if [ "$id" = "8056c2e21c000001" ]; then
@@ -181,7 +181,7 @@ configure_new_schema() {
 		fi
 	done
 
-	# Reuse an existing section for this network if there is one.
+	# Переиспользуем существующую секцию для этой сети, если она есть.
 	found=""
 	for sec in $(section_list zerotier network); do
 		id=$(uci get "zerotier.$sec.id" 2>/dev/null || true)
@@ -194,7 +194,7 @@ configure_new_schema() {
 	if [ -z "$found" ]; then
 		found=$(uci add zerotier network)
 	fi
-	[ -n "$found" ] || die "failed to create a ZeroTier network section"
+	[ -n "$found" ] || die "не удалось создать секцию сети ZeroTier"
 
 	uci_quiet set "zerotier.$found.id=$NETWORK_ID"
 	uci_quiet set "zerotier.$found.allow_managed=1"
@@ -203,7 +203,7 @@ configure_new_schema() {
 	uci_quiet set "zerotier.$found.allow_dns=0"
 }
 
-# OpenWrt 22.03 and older use a single section with a "join" list.
+# OpenWrt 22.03 и старше используют одну секцию со списком "join".
 configure_old_schema() {
 	local sec
 
@@ -211,7 +211,7 @@ configure_old_schema() {
 	if [ -z "$sec" ]; then
 		sec=$(uci add zerotier zerotier)
 	fi
-	[ -n "$sec" ] || die "failed to create a ZeroTier config section"
+	[ -n "$sec" ] || die "не удалось создать секцию конфигурации ZeroTier"
 
 	uci_quiet set "zerotier.$sec.enabled=1"
 	uci_quiet del_list "zerotier.$sec.join=8056c2e21c000001"
@@ -244,7 +244,7 @@ ensure_forwarding() {
 	done
 
 	sec=$(uci add firewall forwarding)
-	[ -n "$sec" ] || die "failed to add a firewall forwarding rule"
+	[ -n "$sec" ] || die "не удалось добавить правило forwarding"
 	uci_quiet set "firewall.$sec.src=$src"
 	uci_quiet set "firewall.$sec.dest=$dst"
 }
@@ -253,14 +253,14 @@ configure_firewall() {
 	local zone=""
 
 	if ! command -v fw4 >/dev/null 2>&1; then
-		warn "fw4 not found (OpenWrt 21.02 or older); skipping firewall setup"
+		warn "fw4 не найден (OpenWrt 21.02 или старше); пропускаем настройку firewall"
 		return 0
 	fi
 
 	zone=$(find_zone zerotier)
 	if [ -z "$zone" ]; then
 		zone=$(uci add firewall zone)
-		[ -n "$zone" ] || die "failed to add a firewall zone"
+		[ -n "$zone" ] || die "не удалось добавить зону firewall"
 		uci_quiet set "firewall.$zone.name=zerotier"
 		uci_quiet set "firewall.$zone.input=ACCEPT"
 		uci_quiet set "firewall.$zone.output=ACCEPT"
@@ -268,33 +268,33 @@ configure_firewall() {
 		uci_quiet set "firewall.$zone.masq=1"
 		uci_quiet set "firewall.$zone.mtu_fix=1"
 		uci_quiet add_list "firewall.$zone.device=zt+"
-		log "Added firewall zone 'zerotier' for zt+ interfaces."
+		log "Добавлена зона firewall 'zerotier' для интерфейсов zt+."
 	else
 		if uci get "firewall.$zone.device" 2>/dev/null | grep -qF 'zt+'; then
-			log "Firewall zone 'zerotier' is already present."
+			log "Зона firewall 'zerotier' уже существует."
 		else
 			uci_quiet add_list "firewall.$zone.device=zt+"
-			log "Added zt+ device to the existing 'zerotier' firewall zone."
+			log "Устройство zt+ добавлено в существующую зону firewall 'zerotier'."
 		fi
 	fi
 
 	if [ "$LAN_ACCESS" -eq 1 ]; then
 		if [ -z "$(find_zone lan)" ]; then
-			warn "firewall zone 'lan' not found; skipping LAN forwarding"
+			warn "зона firewall 'lan' не найдена; пропускаем forwarding в LAN"
 		else
 			ensure_forwarding zerotier lan
 			ensure_forwarding lan zerotier
-			log "Enabled forwarding between ZeroTier and LAN."
+			log "Включён forwarding между ZeroTier и LAN."
 		fi
 	fi
 
-	uci commit firewall || die "failed to commit the firewall configuration"
-	/etc/init.d/firewall reload || warn "firewall reload failed; run '/etc/init.d/firewall reload' manually"
+	uci commit firewall || die "не удалось сохранить конфигурацию firewall"
+	/etc/init.d/firewall reload || warn "не удалось перезагрузить firewall; выполните '/etc/init.d/firewall reload' вручную"
 }
 
 wait_for_daemon() {
 	local i=0 info=""
-	log "Waiting for the ZeroTier daemon..."
+	log "Ожидание демона ZeroTier..."
 	while [ "$i" -lt 30 ]; do
 		info=$(zerotier-cli info 2>/dev/null)
 		if [ -n "$info" ]; then
@@ -335,28 +335,28 @@ poll_network_status() {
 print_summary() {
 	printf '\n'
 	printf '============================================================\n'
-	printf ' ZeroTier setup complete\n'
+	printf ' Настройка ZeroTier завершена\n'
 	printf '============================================================\n'
-	printf ' Network ID : %s\n' "$NETWORK_ID"
-	printf ' Node ID    : %s\n' "${NODE_ID:-unknown}"
-	printf ' Status     : %s\n' "${STATUS:-unknown}"
-	printf ' Network    : %s\n' "${NETLINE:-not visible yet}"
+	printf ' ID сети    : %s\n' "$NETWORK_ID"
+	printf ' ID узла    : %s\n' "${NODE_ID:-неизвестно}"
+	printf ' Статус     : %s\n' "${STATUS:-неизвестно}"
+	printf ' Сеть       : %s\n' "${NETLINE:-пока не видна}"
 	printf '============================================================\n'
 
 	if [ "$STATUS" != "OK" ]; then
-		printf '\nThe node is not fully connected yet.\n'
-		printf 'Authorize it in ZeroTier Central:\n'
+		printf '\nУзел ещё не подключён полностью.\n'
+		printf 'Авторизуйте его в ZeroTier Central:\n'
 		printf '  https://my.zerotier.com/network/%s\n' "$NETWORK_ID"
-		printf '  Node ID: %s\n' "${NODE_ID:-unknown}"
-		printf 'Then check again with: zerotier-cli listnetworks\n'
+		printf '  ID узла: %s\n' "${NODE_ID:-неизвестно}"
+		printf 'Потом проверьте снова: zerotier-cli listnetworks\n'
 	fi
 
 	if [ "$LAN_ACCESS" -eq 0 ]; then
-		printf '\nLAN access is disabled. Re-run with --lan to forward traffic\n'
-		printf 'between the ZeroTier network and your LAN.\n'
+		printf '\nДоступ в LAN выключен. Запустите с --lan, чтобы разрешить\n'
+		printf 'трафик между сетью ZeroTier и локальной сетью.\n'
 	fi
 
-	printf '\nUseful commands:\n'
+	printf '\nПолезные команды:\n'
 	printf '  zerotier-cli info\n'
 	printf '  zerotier-cli listnetworks\n'
 	printf '  logread -e zerotier\n\n'
@@ -365,9 +365,9 @@ print_summary() {
 main() {
 	parse_args "$@"
 
-	[ "$(id -u 2>/dev/null)" = "0" ] || die "run this script as root"
-	[ -f /etc/openwrt_release ] || die "this script is for OpenWrt"
-	command -v uci >/dev/null 2>&1 || die "uci not found"
+	[ "$(id -u 2>/dev/null)" = "0" ] || die "запустите скрипт от root"
+	[ -f /etc/openwrt_release ] || die "этот скрипт предназначен для OpenWrt"
+	command -v uci >/dev/null 2>&1 || die "uci не найден"
 
 	if [ "$DO_INSTALL" -eq 1 ]; then
 		install_package
@@ -375,47 +375,47 @@ main() {
 	repair_package
 
 	command -v zerotier-cli >/dev/null 2>&1 ||
-		die "zerotier-cli not found; install the 'zerotier' package first"
-	[ -x /etc/init.d/zerotier ] || die "/etc/init.d/zerotier not found"
+		die "zerotier-cli не найден; сначала установите пакет 'zerotier'"
+	[ -x /etc/init.d/zerotier ] || die "/etc/init.d/zerotier не найден"
 	[ -f /etc/config/zerotier ] || touch /etc/config/zerotier
 
 	modprobe tun 2>/dev/null || true
 	if [ ! -e /dev/net/tun ]; then
-		warn "/dev/net/tun is missing; ZeroTier needs kmod-tun to work"
+		warn "/dev/net/tun отсутствует; для работы ZeroTier нужен kmod-tun"
 	fi
 
-	log "Configuring ZeroTier for network $NETWORK_ID..."
+	log "Настройка ZeroTier для сети $NETWORK_ID..."
 	if uses_network_sections; then
 		configure_new_schema
 	else
 		configure_old_schema
 	fi
-	uci commit zerotier || die "failed to commit /etc/config/zerotier"
+	uci commit zerotier || die "не удалось сохранить /etc/config/zerotier"
 
 	if [ "$SETUP_FIREWALL" -eq 1 ]; then
 		configure_firewall
 	else
-		log "Skipping firewall setup (--no-firewall)."
+		log "Пропускаем настройку firewall (--no-firewall)."
 	fi
 
-	log "Enabling and starting ZeroTier..."
-	/etc/init.d/zerotier enable >/dev/null 2>&1 || warn "failed to enable ZeroTier at boot"
+	log "Включаем и запускаем ZeroTier..."
+	/etc/init.d/zerotier enable >/dev/null 2>&1 || warn "не удалось включить автозапуск ZeroTier"
 	if ! /etc/init.d/zerotier restart; then
 		logread -e zerotier 2>/dev/null | tail -n 20
-		die "failed to start the ZeroTier service"
+		die "не удалось запустить службу ZeroTier"
 	fi
 
-	wait_for_daemon || die "the ZeroTier daemon did not come up; see 'logread -e zerotier'"
+	wait_for_daemon || die "демон ZeroTier не запустился; смотрите 'logread -e zerotier'"
 
 	if ! zerotier-cli listnetworks 2>/dev/null | grep -qF "$NETWORK_ID"; then
-		log "Requesting to join network $NETWORK_ID..."
-		zerotier-cli join "$NETWORK_ID" >/dev/null 2>&1 || warn "zerotier-cli join failed"
+		log "Запрос на подключение к сети $NETWORK_ID..."
+		zerotier-cli join "$NETWORK_ID" >/dev/null 2>&1 || warn "zerotier-cli join завершился с ошибкой"
 	fi
 
 	poll_network_status
 	print_summary
 
-	[ -n "$NETLINE" ] || die "network $NETWORK_ID is not visible in 'zerotier-cli listnetworks'"
+	[ -n "$NETLINE" ] || die "сеть $NETWORK_ID не видна в 'zerotier-cli listnetworks'"
 }
 
 main "$@"
