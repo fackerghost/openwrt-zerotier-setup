@@ -27,6 +27,47 @@ ZeroTier Central.
 - интернет на роутере (для `opkg`/`apk` и связи с контроллером ZeroTier);
 - немного свободного места во flash.
 
+## Сколько места занимает
+
+Пакеты для `aarch64_cortex-a53` (OpenWrt 25.12):
+
+| Пакет | Сжатый размер |
+| --- | ---: |
+| `zerotier` | 463 КБ |
+| `libstdcpp6` | 628 КБ |
+| `libminiupnpc` | 22 КБ |
+| `libnatpmp1` | 4 КБ |
+| `libatomic1` | 8 КБ |
+| `kmod-tun` | 25 КБ |
+| **Итого** | **≈ 1,1 МБ** |
+
+После распаковки — ориентировочно 3–4 МБ. Точные цифры на роутере:
+
+```sh
+apk info -s zerotier libstdcpp6 libminiupnpc libnatpmp1
+```
+
+Это минимум для официального пакета: ZeroTier написан на C++, поэтому
+`libstdcpp6` обязателен, а `libminiupnpc` и `libnatpmp1` — жёсткие зависимости
+пакета (автоматический проброс портов). Убрать их без пересборки нельзя.
+
+Если собираете свою прошивку, добавьте только сам пакет:
+
+```
+CONFIG_PACKAGE_zerotier=y
+# CONFIG_ZEROTIER_ENABLE_SELFTEST is not set
+CONFIG_TARGET_OPTIMIZATION="-Os"
+CONFIG_USE_STRIP=y
+CONFIG_STRIP_KERNEL_EXPORTS=y
+```
+
+`luci-app-zerotier` не нужен — скрипт настраивает всё через UCI. Официальный
+пакет уже собирается с `ZT_EMBEDDED=1` и `gc-sections`, поэтому заметно
+уменьшить его без потери функциональности не получится.
+
+Если важна именно минимальность, а не ZeroTier: встроенный WireGuard
+занимает десятки килобайт, но это другой тип VPN.
+
 ## 1. Скачать скрипт
 
 Сначала проверьте, что роутер видит интернет и DNS:
@@ -284,6 +325,47 @@ opkg install ca-bundle libustream-mbedtls
 ```
 
 или `libustream-openssl`, если сборка на OpenSSL.
+
+### apk установил zerotier, но не установил зависимость
+
+На OpenWrt с `apk` (24.10+ / 25.x) загрузка может оборваться на одном из
+пакетов, хотя остальные установятся:
+
+```
+(1/4) Installing libminiupnpc (...)
+wget: Failed to send request: Operation not permitted
+ERROR: libminiupnpc-...: unexpected end of file
+...
+(4/4) Installing zerotier (...)
+1 error; ...
+ERROR: failed to install zerotier
+```
+
+При этом сам `zerotier` уже стоит, но без `libminiupnpc` не запустится.
+Скрипт проверяет `ldd` и сам пытается выполнить `apk fix`. Вручную:
+
+```sh
+apk cache clean 2>/dev/null
+apk update
+apk add libminiupnpc
+# или сразу починить все зависимости:
+apk fix
+```
+
+Проверка:
+
+```sh
+ldd /usr/bin/zerotier-one | grep 'not found'
+```
+
+Пустой вывод — всё на месте, можно снова запускать скрипт:
+
+```sh
+sh /tmp/zerotier-setup.sh
+```
+
+Если `apk` снова обрывается на том же месте, повторите — это сетевой сбой
+или нехватка места, а не ошибка пакета.
 
 ### Если это не помогло
 

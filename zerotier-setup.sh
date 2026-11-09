@@ -110,11 +110,44 @@ install_package() {
 	log "Installing the zerotier package..."
 	if command -v apk >/dev/null 2>&1; then
 		apk update || warn "apk update reported errors, trying install anyway"
-		apk add zerotier || die "failed to install zerotier (check feeds and free space)"
+		apk add zerotier || warn "apk reported errors; checking the installation..."
 	else
 		opkg update || warn "opkg update reported errors, trying install anyway"
-		opkg install zerotier || die "failed to install zerotier (check feeds and free space)"
+		opkg install zerotier || warn "opkg reported errors; checking the installation..."
 	fi
+
+	if ! pkg_installed; then
+		die "failed to install zerotier (check feeds, DNS and free space)"
+	fi
+}
+
+# A partial apk transaction can leave the main package installed but a
+# dependency missing. Detect that and try to repair it before starting.
+missing_libs() {
+	[ -x /usr/bin/zerotier-one ] || return 0
+	command -v ldd >/dev/null 2>&1 || return 0
+	ldd /usr/bin/zerotier-one 2>/dev/null | awk '/not found/ {print $1}'
+}
+
+repair_package() {
+	local missing
+
+	missing=$(missing_libs)
+	[ -n "$missing" ] || return 0
+
+	warn "ZeroTier has missing libraries: $missing"
+	warn "Trying to repair the package installation..."
+	if command -v apk >/dev/null 2>&1; then
+		apk fix >/dev/null 2>&1 || apk add zerotier >/dev/null 2>&1 || true
+	else
+		opkg install --force-reinstall zerotier >/dev/null 2>&1 || true
+	fi
+
+	missing=$(missing_libs)
+	if [ -n "$missing" ]; then
+		die "ZeroTier still has missing libraries: $missing. Run 'apk fix' (or reinstall zerotier) and retry."
+	fi
+	log "ZeroTier package dependencies are complete."
 }
 
 # OpenWrt 23.05+ uses one UCI network section per ZeroTier network.
@@ -330,6 +363,7 @@ main() {
 	if [ "$DO_INSTALL" -eq 1 ]; then
 		install_package
 	fi
+	repair_package
 
 	command -v zerotier-cli >/dev/null 2>&1 ||
 		die "zerotier-cli not found; install the 'zerotier' package first"

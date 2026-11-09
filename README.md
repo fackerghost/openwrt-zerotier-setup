@@ -17,6 +17,8 @@ be passed with `--network`.
 - Enables and restarts the service, generates and persists the node identity
 - Adds an `fw4` zone for `zt+` interfaces (input/output/forward, masq, MTU fix)
 - Waits for the daemon, joins the network and prints the node ID
+- Detects a partially installed `apk` transaction (missing libraries) and
+  attempts to repair it with `apk fix`
 - Optional LAN forwarding and a `--no-firewall` escape hatch
 - Safe to re-run: existing sections, zones and forwarding rules are reused
 
